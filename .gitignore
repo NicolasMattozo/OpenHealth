@@ -1,35 +1,35 @@
+# Arquivos locais e segredos
+local.properties
 HELP.md
+
+# Documentos e SQL locais do projeto
+Diagrama_Classes_Prontuario.pdf
+Modelo_Relacional.pdf
+prontuario.sql
+
+# Backend (Spring Boot / Maven / Java)
 target/
-.mvn/wrapper/maven-wrapper.jar
+!.mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/
+*.class
+*.log
+*.jar
+*.war
 
-### STS ###
-.apt_generated
-.classpath
-.factorypath
-.project
-.settings
-.springBeans
-.sts4-cache
+# Frontend (React / Vite / Node)
+node_modules/
+dist/
+dist-ssr/
+*.local
 
-### IntelliJ IDEA ###
-.idea
+# IDEs e Ambiente
+.idea/
+.vscode/
 *.iws
 *.iml
 *.ipr
-
-### NetBeans ###
-/nbproject/private/
-/nbbuild/
-/dist/
-/nbdist/
-/.nb-gradle/
-build/
-!**/src/main/**/build/
-!**/src/test/**/build/
-
-
-local.properties
-### VS Code ###
-.vscode/
+.DS_Store
+.env
+.env.*
+!.env.example
