@@ -22,8 +22,11 @@ export function AtendimentosPage() {
   const cnpj = instituicaoAtiva as string
   const avisos = useAvisos()
   const navegar = useNavigate()
-  const lista = useAsync(() => atendimentos.listar(cnpj), [cnpj])
   const [filtro, setFiltro] = useState<StatusAtendimento | 'TODOS'>('TODOS')
+  const lista = useAsync(
+    () => atendimentos.listar(cnpj, filtro === 'TODOS' ? undefined : filtro),
+    [cnpj, filtro],
+  )
   const [novo, setNovo] = useState(false)
   const [iniciando, setIniciando] = useState<number | null>(null)
 
@@ -48,8 +51,8 @@ export function AtendimentosPage() {
     }
   }
 
-  const visiveis = (lista.dados ?? []).filter((a) => filtro === 'TODOS' || a.status === filtro)
-
+  const visiveis = lista.dados ?? []
+  
   return (
     <>
       <CabecalhoPagina

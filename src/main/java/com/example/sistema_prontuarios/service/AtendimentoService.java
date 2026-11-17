@@ -106,14 +106,18 @@ public class AtendimentoService {
         return paraDto(atendimento);
     }
 
-    /** Os 50 atendimentos mais recentes da instituicao (opcionalmente so de um status). */
+        /** Busca os 50 atendimentos da instituicao decidindo a query conforme o filtro. */
     @Transactional(readOnly = true)
     public List<AtendimentoDto> listar(String cnpjParam, StatusAtendimento status, Long solicitante) {
         String cnpj = Cnpj.normalizar(cnpjParam);
         permissao.exigirPapel(solicitante, cnpj, Papel.RECEPCIONISTA, Papel.MEDICO, Papel.ENFERMEIRO);
 
-        return atendimentos.listarRecentes(cnpj, PageRequest.of(0, 50)).stream()
-                .filter(a -> status == null || a.getStatus() == status)
+        var page = PageRequest.of(0, 50);
+        List<Atendimento> lista = (status == null)
+                ? atendimentos.listarRecentes(cnpj, page)
+                : atendimentos.listarPorStatus(cnpj, status, page);
+
+        return lista.stream()
                 .map(AtendimentoService::paraDto)
                 .toList();
     }

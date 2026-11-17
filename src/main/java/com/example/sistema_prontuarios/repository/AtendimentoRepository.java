@@ -10,10 +10,16 @@ import org.springframework.data.repository.query.Param;
 
 public interface AtendimentoRepository extends JpaRepository<Atendimento, Long> {
 
+    /** Todos os mais recentes da instituição (usado na aba "Todos") */
     @Query("select a from Atendimento a where a.instituicao.cnpj = :cnpj order by a.dataHora desc")
     List<Atendimento> listarRecentes(@Param("cnpj") String cnpj, Pageable pageable);
 
-    /** Quantos atendimentos do paciente na instituicao estao em um dos dois status informados. */
+    /** Filtro estrito por status no banco (usado em "Aberto", "Em andamento" e "Finalizado") */
+    @Query("select a from Atendimento a where a.instituicao.cnpj = :cnpj and a.status = :status order by a.dataHora desc")
+    List<Atendimento> listarPorStatus(@Param("cnpj") String cnpj,
+                                      @Param("status") StatusAtendimento status,
+                                      Pageable pageable);
+
     @Query("select count(a) from Atendimento a "
          + "where a.prontuario.cpfPaciente = :cpf and a.instituicao.cnpj = :cnpj "
          + "and (a.status = :status1 or a.status = :status2)")
