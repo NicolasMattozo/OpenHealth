@@ -9,6 +9,7 @@ import com.example.sistema_prontuarios.repository.UsuarioInstituicaoRepository;
 import com.example.sistema_prontuarios.repository.UsuarioPapelRepository;
 import com.example.sistema_prontuarios.repository.UsuarioRepository;
 import com.example.sistema_prontuarios.security.JwtService;
+import com.example.sistema_prontuarios.security.TentativasLoginService;
 import com.example.sistema_prontuarios.web.dto.LoginResponse;
 import com.example.sistema_prontuarios.web.dto.UsuarioLogadoDto;
 import com.example.sistema_prontuarios.web.dto.VinculoDto;
@@ -30,6 +31,7 @@ public class AuthService {
     private final UsuarioPapelRepository papeis;
     private final PasswordEncoder encoder;
     private final JwtService jwtService;
+    private final TentativasLoginService tentativasService;
 
     /** Hash usado quando o usuario nao existe, para o login levar o mesmo tempo nos dois casos. */
     private final String hashFalso;
@@ -39,30 +41,44 @@ public class AuthService {
                        UsuarioInstituicaoRepository vinculos,
                        UsuarioPapelRepository papeis,
                        PasswordEncoder encoder,
-                       JwtService jwtService) {
+                       JwtService jwtService,
+                       TentativasLoginService tentativasService) {
         this.usuarios = usuarios;
         this.pacientes = pacientes;
         this.vinculos = vinculos;
         this.papeis = papeis;
         this.encoder = encoder;
         this.jwtService = jwtService;
+        this.tentativasService = tentativasService;
         this.hashFalso = encoder.encode("senha-falsa-para-igualar-o-tempo");
     }
 
     @Transactional(readOnly = true)
     public LoginResponse login(String identificador, String senha) {
+        if (tentativasService.estaBloqueado(identificador)) {
+            long minutos = tentativasService.minutosRestantes(identificador);
+            throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS,
+                    "Muitas tentativas incorretas. Tente novamente em " + minutos + " minuto(s).");
+        }
+
         Usuario usuario = localizar(identificador.trim());
 
         boolean temSenha = usuario != null && usuario.getSenhaHash() != null;
         boolean senhaConfere = encoder.matches(senha, temSenha ? usuario.getSenhaHash() : hashFalso);
 
         if (usuario == null || !usuario.isAtivo() || !temSenha || !senhaConfere) {
+            tentativasService.registrarFalha(identificador);
             if (usuario != null) {
                 AuditoriaContexto.adicionar("idUsuarioAlvo", usuario.getId());
+            }
+            if (tentativasService.estaBloqueado(identificador)) {
+                throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS,
+                        "Número máximo de 5 tentativas excedido. Bloqueado por 15 minutos.");
             }
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Credenciais inválidas.");
         }
 
+        tentativasService.limpar(identificador);
         AuditoriaContexto.definirUsuario(usuario.getId());
         return respostaDeLogin(montar(usuario));
     }
@@ -115,7 +131,6 @@ public class AuthService {
     }
 
     private UsuarioLogadoDto montar(Usuario usuario) {
-        // Com senha temporaria o usuario so pode trocar a senha: nenhum papel no token.
         if (usuario.isDeveTrocarSenha()) {
             return new UsuarioLogadoDto(usuario.getId(), usuario.getNome(), usuario.getEmail(),
                     null, List.of(), List.of(), true);
