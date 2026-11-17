@@ -1,2 +1,7 @@
+# O Git guarda os textos com fim de linha LF e entrega no formato de cada sistema.
+# Evita "modificacoes" falsas so por causa de CRLF (Windows) vs LF.
+* text=auto
 /mvnw text eol=lf
+*.sh text eol=lf
 *.cmd text eol=crlf
+*.ps1 text eol=crlf

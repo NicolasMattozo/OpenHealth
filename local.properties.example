@@ -1,0 +1,8 @@
+# Copie este arquivo para "local.properties" (na mesma pasta do pom.xml) e ajuste os valores.
+# O "local.properties" NAO vai para o Git: cada pessoa do grupo tem o seu.
+spring.datasource.password=sua_senha_do_postgres
+
+# Opcional (so se quiser trocar os padroes de desenvolvimento):
+# spring.datasource.username=postgres
+# app.jwt.secret=uma-chave-longa-com-pelo-menos-32-caracteres
+# app.admin.senha=OutraSenhaForte123
