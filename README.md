@@ -1,140 +1,365 @@
-# 🏥 OpenHealth — Prontuário Unificado (Rede Integrada de Saúde)
+# OpenHealth — Sistema de Prontuários
 
-Plataforma web de **Prontuário Eletrônico Unificado e Federado** para redes integradas de saúde, projetada com foco em **interoperabilidade entre instituições**, **controle de consentimento pelo paciente (LGPD)**, **fluxo assistencial orientado ao Protocolo de Manchester** e **auditoria imutável em nível de banco de dados**.
+O **OpenHealth** é um sistema web acadêmico para gerenciamento de prontuários e atendimentos em instituições de saúde. O projeto é dividido em uma API REST desenvolvida em Java com Spring Boot e uma aplicação web desenvolvida em React com TypeScript.
 
----
+A aplicação contempla cadastro e administração de instituições e usuários, atendimento e triagem, registros clínicos, prescrições, requisições e resultados de exames, portal do paciente, solicitações de acesso ao prontuário e registros de auditoria.
 
-## 📌 Visão Geral
-
-O **OpenHealth** centraliza o histórico clínico do cidadão em um prontuário único, permitindo que diferentes unidades de saúde (Hospitais Gerais, UPAs, UBS e Clínicas de Diagnóstico) prestem cuidado contínuo mediante autorização explícita e auditável do titular dos dados.
-
-### Principais Pilares
-- **Privacidade e Consentimento (LGPD):** O atendimento e o acesso ao histórico clínico por uma instituição dependem de solicitação formal (`PENDENTE -> APROVADA | NEGADA -> REVOGADA`) controlada pelo próprio paciente.
-- **Fluxo Assistencial Estrito:** Máquina de estados validada da recepção até a alta (`AGUARDANDO_TRIAGEM -> AGUARDANDO_MEDICO -> EM_CONSULTA -> FINALIZADO`), exigindo classificação de risco antes da consulta médica.
-- **Prontuário Clínico Especializado:** Registros transacionais tipados (`TRIAGEM`, `DADO_CLINICO`, `CONDICAO_DIAGNOSTICO`, `PRESCRICAO_MEDICAMENTO` e `REQUISICAO_EXAME`) com versionamento imutável de laudos de exames (`versao 1..N`).
-- **Rastreabilidade Total:** Auditoria automática de operações (`INSERT`, `UPDATE`, `DELETE`) vinculada ao contexto do usuário autenticado diretamente no banco de dados.
+> **Atenção:** este projeto está em desenvolvimento e deve ser utilizado somente em ambiente de desenvolvimento ou demonstração, com dados fictícios. Não utilize dados reais de pacientes nem o disponibilize publicamente antes de uma revisão de segurança, privacidade, integridade dos dados e validação clínica.
 
 ---
 
-## 🛠️ Stack Tecnológica
+## 1. Tecnologias utilizadas
 
 ### Backend
-- **Linguagem:** Java 21 LTS
-- **Framework:** Spring Boot 3.x (`Spring Web`, `Spring Data JPA` / `Spring JDBC`, `Spring Security`, `Bean Validation`)
-- **Autenticação & Autorização:** JWT (Stateless) + Controle de Acesso Contextual por Instituição (RBAC Multi-tenant)
-- **Migrações & Persistência:** Flyway + PostgreSQL Driver
 
-### Banco de Dados
-- **SGBD:** PostgreSQL 16+
-- **Recursos Avançados:**
-  - Tipos `ENUM` nativos (`papel_usuario`, `tipo_profissional`, `status_solicitacao`, `status_atendimento`, `tipo_registro_clinico`)
-  - Constraint Triggers `DEFERRABLE INITIALLY DEFERRED` para especialização 1:1 estrita de registros clínicos
-  - Triggers PL/pgSQL para máquina de estados, bloqueio de mutação de histórico e auditoria via `current_setting('app.id_usuario', true)`
-  - Views dedicadas para visibilidade do paciente (`historico_clinico`, `registros_visiveis_ao_paciente`, `resultados_visiveis_ao_paciente`)
+- **Java 21**
+- **Spring Boot 4.1.2**
+- Spring Web MVC
+- Spring Data JPA
+- Spring Security e OAuth2 Resource Server para validação de JWT
+- Bean Validation
+- Flyway para migrações do banco de dados
+- PostgreSQL JDBC Driver
+- Lombok
+- Maven Wrapper
 
 ### Frontend
-- **Biblioteca Base:** React 18+ com TypeScript (Vite)
-- **Estilização & UI:** Tailwind CSS + Design System próprio orientado a componentes reutilizáveis
-- **Roteamento & Estado Assíncrono:** React Router v6 + TanStack Query (React Query)
+
+- **React 19**
+- **TypeScript 5.9**
+- **Vite 6**
+- **React Router 7**
+- CSS próprio em `src/estilos.css`
+- Vitest, Testing Library e jsdom para testes
+
+### Banco de dados
+
+- **PostgreSQL**
+- Migrações SQL versionadas em `src/main/resources/db/migration/`
 
 ---
 
-## 👥 Perfis de Acesso (RBAC)
+## 2. Funcionalidades contempladas
 
-| Perfil | Escopo | Principais Responsabilidades |
-| :--- | :--- | :--- |
-| **Recepcionista** | Institucional | Cadastro de pacientes, abertura de prontuário 1:1, solicitação de acesso (LGPD) e abertura/acompanhamento da fila de atendimentos. |
-| **Enfermeiro** | Assistencial Inicial | Aferição de sinais vitais (PA, FC, Temp, SpO₂, Peso, Altura), classificação de risco pelo **Protocolo de Manchester**, consulta de histórico/alergias e leitura de prescrições. |
-| **Médico** | Clínico Completo | Condução da consulta (`EM_CONSULTA`), anamnese/evolução clínica, registro de diagnósticos (`CID`), emissão de prescrições, requisição/laudo de exames e finalização de atendimento. |
-| **Paciente** | Portal do Titular | Visualização do próprio histórico clínico, receitas ativas, resultados de exames e gestão de consentimento (`Autorizar`, `Recusar` ou `Revogar` acesso de instituições). |
-| **Administrador da Instituição** | Gerencial Local | Gestão do quadro de profissionais da unidade (`Médicos`, `Enfermeiros`, `Recepcionistas`), vínculos institucionais, departamentos e matriz de permissões. |
-| **Administrador Global** | Governança da Rede | Credenciamento de instituições de saúde (CNPJ), designação de administradores locais e monitoramento da rede federada. |
+As funcionalidades abaixo estão representadas na implementação atual do projeto. Isso não significa que o sistema esteja validado para uso clínico ou produção.
+
+### Autenticação e controle de acesso
+
+- Autenticação por e-mail ou CPF, conforme o tipo de usuário.
+- Emissão e validação de token JWT.
+- Senhas armazenadas com hash BCrypt.
+- Controle de acesso conforme o papel do usuário e a instituição selecionada.
+- Troca de senha, incluindo o fluxo de senha temporária.
+
+### Perfis de acesso
+
+| Perfil | Escopo principal |
+|---|---|
+| Administrador do sistema | Administração global e cadastro de instituições. |
+| Administrador da instituição | Administração local de usuários, papéis e departamentos. |
+| Recepcionista | Cadastro de pacientes e abertura/acompanhamento de atendimentos. |
+| Enfermeiro | Acesso às funcionalidades de triagem e registros relacionados. |
+| Médico | Atendimento clínico, diagnósticos, prescrições e requisições de exames. |
+| Paciente | Consulta ao próprio prontuário e gerenciamento de solicitações de acesso. |
+
+Os papéis institucionais são definidos no código como `RECEPCIONISTA`, `MEDICO`, `ENFERMEIRO` e `ADMIN_INSTITUICAO`. O administrador global e o acesso do paciente possuem tratamento próprio na aplicação.
+
+### Atendimento e prontuário clínico
+
+- Cadastro e consulta de pacientes.
+- Abertura e acompanhamento de atendimentos por instituição.
+- Registro de triagem e classificação de risco.
+- Registro de dados clínicos e diagnósticos.
+- Registro de prescrições de medicamentos.
+- Requisição de exames e inclusão de resultados.
+- Consulta ao histórico clínico conforme as permissões aplicáveis.
+
+Os estados de atendimento definidos no código são `ABERTO`, `EM_ANDAMENTO`, `FINALIZADO` e `CANCELADO`. O fluxo principal implementado utiliza a abertura, o início e a finalização do atendimento. As regras clínicas e de transição devem ser avaliadas e validadas antes de qualquer utilização real.
+
+### Consentimento e acesso ao prontuário
+
+- Solicitação de acesso ao prontuário por uma instituição.
+- Aprovação, negativa e revogação de solicitações pelo paciente.
+- Consulta do histórico, medicamentos, requisições e resultados disponibilizados ao paciente.
+
+Os estados de solicitação definidos no código são `PENDENTE`, `APROVADA`, `NEGADA` e `REVOGADA`.
+
+### Auditoria
+
+O projeto possui mecanismo de auditoria por interceptor e anotação nos endpoints selecionados. Os registros incluem informações da operação e do contexto da requisição. A migração `V4__auditoria.sql` também cria uma proteção para impedir atualização e exclusão de registros da tabela `log_auditoria`.
+
+A cobertura da auditoria deve ser verificada endpoint por endpoint. A implementação atual não deve ser descrita como auditoria automática de toda operação SQL do banco.
 
 ---
 
-## 🧩 Arquitetura e Componentização
+## 3. Organização do projeto
 
-O projeto adota uma arquitetura de **Monólito Modular (Package-by-Feature)** no Spring Boot combinada com **Design System Component-Driven** no React:
+A estrutura principal do repositório é:
 
 ```text
 OpenHealth/
-├── backend/                          # API RESTful em Spring Boot 3 (Java 21)
-│   └── src/main/java/.../openhealth/
-│       ├── shared/                   # Security JWT, AuditUserContextInterceptor, GlobalExceptionHandler
-│       ├── auth/                     # M01: Login multi-perfil, sessão e troca de contexto
-│       ├── governance/               # M02: Instituições, usuários, vínculos, papéis e conselhos (CRM/COREN)
-│       ├── patient/                  # M03: Pacientes, prontuário 1:1 e solicitações de acesso (LGPD)
-│       ├── attendance/               # M04: Recepção, fila em tempo real, KPIs e máquina de estados
-│       ├── clinical/                 # M05-M07: Triagem Manchester, dados clínicos, CID, prescrições e exames
-│       └── audit/                    # M08: Consulta de logs de auditoria e views do portal do paciente
-│
-└── frontend/                         # SPA em React 18 + TypeScript + Tailwind CSS
-    └── src/
-        ├── components/
-        │   ├── layout/               # <AppShell />, <Sidebar />, <SidebarContextCard />, <TopHeader />
-        │   ├── ui/                   # <KpiStatCard />, <DataTable />, <FilterPills />, <RiskBadge />, <BaseModal />
-        │   └── domain/               # <AttendanceQueueView />, <TriageSplitWorkspace />, <PatientClinicalBanner />,
-        │                             # <ClinicalTimeline />, <ClinicalDataGrid />, <PrescriptionWorkspace />, <ExamWorkspace />
-        ├── pages/                    # Visões compostas por perfil (Recepção, Enfermagem, Médico, Paciente, Admins)
-        ├── services/                 # Clientes HTTP e hooks do TanStack Query
-        └── context/                  # Contexto de autenticação e escopo institucional ativo
+├── .mvn/
+│   └── wrapper/
+├── src/
+│   ├── main/
+│   │   ├── java/com/example/sistema_prontuarios/
+│   │   │   ├── audit/          # Anotações, interceptor e serviços de auditoria
+│   │   │   ├── config/         # Configurações, segurança e administrador inicial
+│   │   │   ├── domain/         # Entidades e enums do domínio
+│   │   │   ├── repository/     # Acesso e consultas ao banco
+│   │   │   ├── security/       # Serviços relacionados a JWT
+│   │   │   ├── service/        # Regras de negócio
+│   │   │   ├── util/           # Utilitários de CPF e CNPJ
+│   │   │   └── web/            # Controllers e DTOs da API
+│   │   └── resources/
+│   │       ├── application.properties
+│   │       └── db/migration/   # Migrações Flyway
+│   └── test/                  # Testes automatizados do backend
+├── frontend/
+│   ├── public/
+│   └── src/
+│       ├── api/               # Cliente HTTP, tipos e endpoints
+│       ├── auth/              # Contexto de autenticação e permissões de menu
+│       ├── components/        # Componentes reutilizáveis
+│       ├── pages/             # Telas por perfil
+│       ├── test/              # Configuração dos testes
+│       └── utils/             # Formatação e funções auxiliares
+├── testar-admin.ps1           # Teste manual da administração
+├── testar-auditoria.ps1       # Teste manual da auditoria
+├── testar-clinica.ps1         # Teste manual das funcionalidades clínicas
+├── testar-paciente.ps1        # Teste manual do portal do paciente
+├── testar-recepcao.ps1        # Teste manual da recepção
+├── mvnw
+├── mvnw.cmd
+└── pom.xml
+```
+
+O backend está organizado em camadas: controllers (`web`), serviços (`service`), repositórios (`repository`) e entidades (`domain`). O frontend possui diretórios separados para API, autenticação, componentes, páginas e utilitários.
+
+---
+
+## 4. Pré-requisitos
+
+Antes de executar o projeto, instale:
+
+- **JDK 21** (com `java` e `javac` disponíveis no `PATH`).
+- **Node.js 20.16 ou superior** e npm.
+- **PostgreSQL** em execução.
+- Acesso à internet na primeira execução do Maven Wrapper e na instalação das dependências npm.
+
+O Maven Wrapper (`mvnw` / `mvnw.cmd`) baixa a distribuição Maven configurada no projeto, portanto não é necessário instalar o Maven separadamente.
+
+Verifique as instalações:
+
+```powershell
+java -version
+node --version
+npm --version
+psql --version
 ```
 
 ---
 
-## 🗺️ Roadmap de Sprints
+## 5. Configuração do banco de dados
 
-- [ ] **Sprint 1 — Fundação, Auth & UI Shell (`🎯 Meta 40%`)**
-  - Setup Spring Boot 3 + PostgreSQL 16 + Interceptor `SET LOCAL app.id_usuario` + Seeds
-  - Autenticação JWT com seleção dos 6 perfis
-  - `<AppShell />` dinâmico por perfil e biblioteca de componentes base (`<KpiStatCard />`, `<DataTable />`, `<RiskBadge />`, `<BaseModal />`)
-- [ ] **Sprint 2 — Recepção, Consentimento LGPD & Triagem (`🎯 Meta 40%`)**
-  - Gestão de Pacientes e criação automática de Prontuário 1:1
-  - Fluxo de Solicitação e Aprovação/Revogação de Acesso (`solicitacao_acesso`)
-  - Painel da Recepção, Fila de Atendimentos e Abertura de Atendimento (`AGUARDANDO_TRIAGEM`)
-  - Fila de Triagem da Enfermagem, Sinais Vitais e Classificação de Manchester (`AGUARDANDO_MEDICO`)
-- [ ] **Sprint 3 — Prontuário Unificado & Consulta Médica (`🚀 Escopo 100%`)**
-  - Banner clínico do paciente, Linha do Tempo multi-institucional e Dados Clínicos (Alergias, Comorbidades, Uso Contínuo)
-  - Assunção de consulta (`EM_CONSULTA`), Anamnese/Evolução e Diagnóstico com código CID
-- [ ] **Sprint 4 — Prescrições, Exames & Desfecho (`🚀 Escopo 100%`)**
-  - Emissão e leitura de Prescrições Médicas
-  - Requisição de Exames e Laudos Versionados Imutáveis (`resultado_exame`)
-  - Finalização do Atendimento (`FINALIZADO`)
-- [ ] **Sprint 5 — Portal do Paciente, Governança & Auditoria (`🚀 Escopo 100%`)**
-  - Portal do Paciente integrado às views de visibilidade
-  - Painéis de Administrador da Instituição, Administrador Global e Logs de Auditoria (`log_auditoria`)
+A aplicação está configurada para utilizar um banco PostgreSQL chamado **`prontuarios`**, por padrão em `localhost:5432`.
+
+Crie o banco antes de iniciar o backend. No terminal, com o PostgreSQL disponível:
+
+```powershell
+createdb -U postgres prontuarios
+```
+
+Como alternativa, crie um banco com o nome `prontuarios` pelo pgAdmin.
+
+**Não é necessário executar um arquivo `prontuario.sql`.** O esquema é criado e atualizado pelo Flyway, utilizando as migrações versionadas em:
+
+```text
+src/main/resources/db/migration/
+```
+
+Atualmente, o projeto contém as migrações `V1__schema_inicial.sql`, `V2__ajustes_casos_de_uso.sql`, `V3__administracao.sql` e `V4__auditoria.sql`. Elas são aplicadas automaticamente quando o backend inicia, desde que a conexão com o banco esteja configurada corretamente.
+
+> Se o banco já possuir tabelas ou dados de outra instalação, faça backup e verifique o estado das migrações antes de executar a aplicação. Não apague um banco existente sem confirmar que os dados podem ser descartados.
 
 ---
 
-## 🚀 Como Executar o Projeto (Em Desenvolvimento)
+## 6. Variáveis de ambiente do backend
 
-### Pré-requisitos
-- **Java 21+** e **Maven 3.9+**
-- **Node.js 20+** e **npm**
-- **PostgreSQL 16+** (local ou via Docker)
+As configurações do backend ficam em `src/main/resources/application.properties`. Os valores abaixo podem ser fornecidos por variáveis de ambiente:
 
-### 1. Banco de Dados (PostgreSQL 16)
-```bash
-# Crie o banco e aplique o schema base (localmente ignorado pelo git)
-createdb prontuario
-psql -v ON_ERROR_STOP=1 -d prontuario -f prontuario.sql
+| Variável | Finalidade |
+|---|---|
+| `DB_USER` | Usuário do PostgreSQL. |
+| `DB_PASSWORD` | Senha do usuário do PostgreSQL. |
+| `JWT_SECRET` | Chave usada para assinar e validar tokens JWT. Deve ter pelo menos 32 caracteres. |
+| `ADMIN_EMAIL` | E-mail do administrador inicial. |
+| `ADMIN_SENHA` | Senha do administrador inicial. |
+
+No **PowerShell**, defina as variáveis na mesma janela em que o backend será iniciado:
+
+```powershell
+$env:DB_USER = "postgres"
+$env:DB_PASSWORD = "SUA_SENHA_DO_POSTGRES"
+$env:JWT_SECRET = "COLOQUE_UMA_CHAVE_ALEATORIA_COM_NO_MINIMO_32_CARACTERES"
+$env:ADMIN_EMAIL = "admin@seuambiente.local"
+$env:ADMIN_SENHA = "DEFINA_UMA_SENHA_FORTE"
 ```
 
-### 2. Backend (Spring Boot)
+No Linux ou macOS, use `export`:
+
 ```bash
-cd backend
+export DB_USER="postgres"
+export DB_PASSWORD="SUA_SENHA_DO_POSTGRES"
+export JWT_SECRET="COLOQUE_UMA_CHAVE_ALEATORIA_COM_NO_MINIMO_32_CARACTERES"
+export ADMIN_EMAIL="admin@seuambiente.local"
+export ADMIN_SENHA="DEFINA_UMA_SENHA_FORTE"
+```
+
+Na primeira inicialização, a aplicação cria o administrador global caso ainda não exista um usuário com o e-mail configurado em `ADMIN_EMAIL`. Se esse usuário já existir, a senha não é redefinida automaticamente.
+
+**Importante sobre segurança:** o `application.properties` atualmente contém valores alternativos de desenvolvimento para algumas configurações. Defina explicitamente as variáveis acima e, antes de publicar o sistema, remova os valores padrão sensíveis do arquivo. Nunca versione senhas, tokens, chaves JWT ou arquivos locais com credenciais.
+
+A configuração CORS do backend está em `app.cors.origens` no `application.properties`. Se o frontend for executado em outra origem, ajuste essa propriedade para incluir somente as origens autorizadas.
+
+---
+
+## 7. Como executar o backend
+
+Na raiz do repositório, depois de criar o banco e configurar as variáveis de ambiente:
+
+### Windows (PowerShell)
+
+```powershell
+.\mvnw.cmd spring-boot:run
+```
+
+### Linux ou macOS
+
+```bash
 ./mvnw spring-boot:run
 ```
 
-### 3. Frontend (React + Vite)
-```bash
-cd frontend
-npm install
-npm run dev
+O backend inicia, por padrão, em:
+
+```text
+http://localhost:8080
 ```
+
+A API utiliza o prefixo `/api`. Por exemplo, o endpoint de login é:
+
+```text
+POST http://localhost:8080/api/auth/login
+```
+
+Mantenha o terminal do backend aberto enquanto utilizar o frontend.
 
 ---
 
-## 📄 Licença
+## 8. Como executar o frontend
 
-Projeto acadêmico e de engenharia de software — **UFPel**.
+Abra outro terminal e entre na pasta `frontend`:
+
+```powershell
+cd frontend
+npm ci
+npm run dev
+```
+
+No Linux ou macOS, os mesmos comandos podem ser executados em um terminal shell.
+
+A aplicação ficará disponível em:
+
+```text
+http://localhost:5173
+```
+
+Durante o desenvolvimento, o Vite encaminha as requisições iniciadas por `/api` para `http://localhost:8080`. Esse endereço é o padrão configurado em `vite.config.ts`.
+
+Para apontar o proxy para outro endereço de backend durante o desenvolvimento, defina a variável no mesmo terminal antes de iniciar o Vite.
+
+No PowerShell:
+
+```powershell
+$env:VITE_BACKEND_URL = "http://localhost:8081"
+npm run dev
+```
+
+No Linux ou macOS:
+
+```bash
+export VITE_BACKEND_URL="http://localhost:8081"
+npm run dev
+```
+
+A configuração atual de `vite.config.ts` lê `VITE_BACKEND_URL` de `process.env`; por isso, defina-a no ambiente do terminal. Já `VITE_API_URL` define um prefixo para as chamadas feitas pelo cliente HTTP do frontend. No cenário local com proxy, deixe `VITE_API_URL` vazia. Se o frontend e a API forem publicados em origens diferentes, configure `VITE_API_URL` no ambiente do Vite e ajuste `app.cors.origens` no `application.properties` do backend para permitir a origem do frontend.
+
+---
+
+## 9. Testes e comandos úteis
+
+### Backend
+
+Na raiz do projeto:
+
+```powershell
+.\mvnw.cmd test
+```
+
+Ou, no Linux/macOS:
+
+```bash
+./mvnw test
+```
+
+### Frontend
+
+Dentro da pasta `frontend`:
+
+```bash
+npm test
+```
+
+Para verificar os tipos e gerar a versão de produção:
+
+```bash
+npm run build
+```
+
+Para visualizar localmente a versão gerada:
+
+```bash
+npm run preview
+```
+
+### Testes manuais da API no Windows
+
+O repositório também contém scripts PowerShell de teste de integração. Eles devem ser executados com o backend ligado e apontando para um banco de desenvolvimento/teste, pois podem criar usuários, pacientes e outros registros.
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\testar-admin.ps1
+powershell -ExecutionPolicy Bypass -File .\testar-recepcao.ps1
+powershell -ExecutionPolicy Bypass -File .\testar-clinica.ps1
+powershell -ExecutionPolicy Bypass -File .\testar-paciente.ps1
+powershell -ExecutionPolicy Bypass -File .\testar-auditoria.ps1
+```
+
+Os scripts exercitam fluxos da administração, recepção, área clínica, portal do paciente e auditoria. Eles são testes manuais de integração e não substituem testes automatizados abrangentes.
+
+---
+
+## 10. Configuração e segurança: observações importantes
+
+- Não utilize dados reais de pacientes em ambiente de desenvolvimento ou demonstração.
+- Não publique o backend com credenciais padrão, chave JWT de exemplo ou senha administrativa conhecida.
+- Não envie arquivos como `local.properties`, `.env` ou `.env.local` com credenciais para o Git ou para terceiros.
+- A autorização deve ser aplicada no backend; ocultar uma opção no frontend não é uma barreira de segurança suficiente.
+- A auditoria atual é acionada por anotações nos endpoints selecionados. Revise a cobertura para garantir o registro de todos os acessos e operações que o projeto exigir.
+- Valide as regras de transição dos atendimentos e a obrigatoriedade das etapas clínicas antes de considerar o fluxo pronto para uso.
+- Faça backup do banco antes de aplicar alterações em ambientes que contenham dados que precisem ser preservados.
+
+---
+
+## 11. Licença e contexto
+
+Projeto acadêmico desenvolvido no contexto da **Universidade Federal de Pelotas (UFPel)**. Este repositório não especifica uma licença de software; portanto, não presuma permissões de redistribuição ou uso comercial sem a definição correspondente pelos responsáveis pelo projeto.
