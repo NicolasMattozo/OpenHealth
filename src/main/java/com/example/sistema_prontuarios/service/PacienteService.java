@@ -88,23 +88,37 @@ public class PacienteService {
         return new PacienteCriadoDto(paraDto(paciente), senhaTemporaria);
     }
 
-    /** Busca por CPF completo ou por parte do nome (minimo 3 caracteres), no maximo 20 resultados. */
+    /**
+     * Busca por CPF completo (rede inteira, com dados mascarados se não houver histórico)
+     * ou por parte do nome (mínimo 3 letras, restrita aos pacientes da instituição).
+     */
     @Transactional(readOnly = true)
     public List<PacienteDto> buscar(String cnpjParam, String busca, Long solicitante) {
-        permissao.exigirPapel(solicitante, Cnpj.normalizar(cnpjParam), Papel.RECEPCIONISTA);
+        String cnpj = Cnpj.normalizar(cnpjParam);
+        permissao.exigirPapel(solicitante, cnpj, Papel.RECEPCIONISTA);
 
         String texto = busca == null ? "" : busca.trim();
         if (texto.length() < 3) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "Informe o CPF ou pelo menos 3 letras do nome.");
         }
+
         String digitos = Cpf.normalizar(texto);
         boolean pareceCpf = texto.matches("[0-9.\\-\\s]+") && digitos.length() == 11;
-        String cpf = pareceCpf ? digitos : "";
 
-        return pacientes.buscar(cpf, escaparLike(texto), PageRequest.of(0, 20)).stream()
-                .map(PacienteService::paraDto)
-                .toList();
+        if (pareceCpf) {
+            // Busca segura direto pela chave primária (CPF)
+            return pacientes.findById(digitos).stream()
+                    .map(p -> pacientes.possuiHistoricoNaInstituicao(p.getCpf(), cnpj)
+                            ? paraDto(p)
+                            : paraDtoMascarado(p))
+                    .toList();
+        } else {
+            // Busca por nome apenas de quem já tem atendimento nesta instituição
+            return pacientes.buscarPorNomeNaInstituicao(cnpj, escaparLike(texto), PageRequest.of(0, 20)).stream()
+                    .map(PacienteService::paraDto)
+                    .toList();
+        }
     }
 
     @Transactional(readOnly = true)
@@ -113,11 +127,19 @@ public class PacienteService {
         return paraDto(carregar(cpfParam));
     }
 
-    @Transactional
+        @Transactional
     public PacienteDto atualizarContato(String cnpjParam, String cpfParam,
                                         PacienteAtualizacaoRequest requisicao, Long solicitante) {
-        permissao.exigirPapel(solicitante, Cnpj.normalizar(cnpjParam), Papel.RECEPCIONISTA);
-        Paciente paciente = carregar(cpfParam);
+        String cnpj = Cnpj.normalizar(cnpjParam);
+        permissao.exigirPapel(solicitante, cnpj, Papel.RECEPCIONISTA);
+
+        String cpf = Cpf.normalizar(cpfParam);
+        if (!pacientes.possuiHistoricoNaInstituicao(cpf, cnpj)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "Não é permitido alterar dados de paciente sem histórico de atendimento nesta instituição.");
+        }
+
+        Paciente paciente = carregar(cpf);
         paciente.setTelefone(vazioParaNulo(requisicao.telefone()));
         paciente.setEndereco(vazioParaNulo(requisicao.endereco()));
         return paraDto(paciente);
@@ -149,5 +171,38 @@ public class PacienteService {
         Usuario u = p.getUsuario();
         return new PacienteDto(p.getCpf(), u.getNome(), u.getEmail(), p.getDataNascimento(),
                 p.getTelefone(), p.getEndereco());
+    }
+
+    static PacienteDto paraDtoMascarado(Paciente p) {
+        Usuario u = p.getUsuario();
+        return new PacienteDto(
+                p.getCpf(),
+                u.getNome(),
+                mascararEmail(u.getEmail()),
+                p.getDataNascimento(),
+                mascararTelefone(p.getTelefone()),
+                p.getEndereco() != null ? "[Endereço protegido]" : null
+        );
+    }
+
+    private static String mascararEmail(String email) {
+        if (email == null || !email.contains("@")) return email;
+        String[] partes = email.split("@", 2);
+        String usuario = partes[0];
+        String dominio = partes[1];
+        if (usuario.length() <= 2) {
+            return usuario.charAt(0) + "***@" + dominio;
+        }
+        return usuario.charAt(0) + "***" + usuario.charAt(usuario.length() - 1) + "@" + dominio;
+    }
+
+    private static String mascararTelefone(String telefone) {
+        if (telefone == null || telefone.isBlank()) return null;
+        String digitos = telefone.replaceAll("\\D", "");
+        if (digitos.length() >= 4) {
+            String ultimos = digitos.substring(digitos.length() - 4);
+            return "(**) *****-" + ultimos;
+        }
+        return "(**) *****-****";
     }
 }
