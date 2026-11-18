@@ -49,6 +49,14 @@ public class AtendimentoController {
         return service.listar(cnpj, status, idDe(jwt));
     }
 
+    @Auditar(acao = "CANCELAR_ATENDIMENTO", recurso = "ATENDIMENTO")
+    @PostMapping("/{id}/cancelar")
+    @PreAuthorize("hasAnyRole('RECEPCIONISTA', 'MEDICO', 'ENFERMEIRO')")
+    public AtendimentoDto cancelar(@PathVariable String cnpj, @PathVariable Long id,
+                                   @AuthenticationPrincipal Jwt jwt) {
+        return service.cancelar(cnpj, id, idDe(jwt));
+    }
+
     private static Long idDe(Jwt jwt) {
         return Long.valueOf(jwt.getSubject());
     }

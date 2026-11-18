@@ -122,6 +122,33 @@ public class AtendimentoService {
                 .toList();
     }
 
+    /**
+     * Cancela um atendimento em aberto (ou em andamento).
+     * Pode ser realizado por RECEPCIONISTA, MEDICO ou ENFERMEIRO da instituição.
+     */
+    @Transactional
+    public AtendimentoDto cancelar(String cnpjParam, Long idAtendimento, Long solicitante) {
+        String cnpj = Cnpj.normalizar(cnpjParam);
+        permissao.exigirPapel(solicitante, cnpj, Papel.RECEPCIONISTA, Papel.MEDICO, Papel.ENFERMEIRO);
+        Atendimento atendimento = atendimentos.findById(idAtendimento)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Atendimento não encontrado."));
+        if (!atendimento.getInstituicao().getCnpj().equals(cnpj)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Atendimento pertence a outra instituição.");
+        }
+        if (atendimento.getStatus() == StatusAtendimento.FINALIZADO) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Não é possível cancelar um atendimento já finalizado.");
+        }
+        if (atendimento.getStatus() == StatusAtendimento.CANCELADO) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Este atendimento já foi cancelado.");
+        }
+        atendimento.setStatus(StatusAtendimento.CANCELADO);
+        atendimento.setDataFinalizacao(null); // data_finalizacao deve ser nula para cancelados
+        AuditoriaContexto.adicionar("idAtendimento", atendimento.getId());
+        AuditoriaContexto.adicionar("cpf", atendimento.getProntuario().getCpfPaciente());
+        return paraDto(atendimento);
+    }
+    
+
     static AtendimentoDto paraDto(Atendimento a) {
         Paciente paciente = a.getProntuario().getPaciente();
         return new AtendimentoDto(

@@ -14,7 +14,7 @@ import { useAsync } from '../../utils/useAsync'
 import { mensagemDoErro } from '../../api/client'
 import { AbrirAtendimentoModal } from './modais'
 
-const FILTROS: (StatusAtendimento | 'TODOS')[] = ['TODOS', 'ABERTO', 'EM_ANDAMENTO', 'FINALIZADO']
+const FILTROS: (StatusAtendimento | 'TODOS')[] = ['TODOS', 'ABERTO', 'EM_ANDAMENTO', 'FINALIZADO', 'CANCELADO']
 
 /** Fila de atendimentos da instituicao: a recepcao abre; medico e enfermeiro atendem. */
 export function AtendimentosPage() {
@@ -29,6 +29,7 @@ export function AtendimentosPage() {
   )
   const [novo, setNovo] = useState(false)
   const [iniciando, setIniciando] = useState<number | null>(null)
+  const [cancelando, setCancelando] = useState<number | null>(null)
 
   // A fila muda sozinha (outras pessoas abrem e iniciam atendimentos): atualiza a cada 30 segundos.
   const { recarregar } = lista
@@ -48,6 +49,23 @@ export function AtendimentosPage() {
       recarregar()
     } finally {
       setIniciando(null)
+    }
+  }
+
+  const cancelar = async (a: Atendimento) => {
+    if (!window.confirm(`Tem certeza que deseja cancelar o atendimento de ${a.nomePaciente}?`)) {
+      return
+    }
+    setCancelando(a.id)
+    try {
+      await atendimentos.cancelar(cnpj, a.id)
+      avisos.sucesso('Atendimento cancelado.')
+      recarregar()
+    } catch (e) {
+      avisos.erro(mensagemDoErro(e))
+      recarregar()
+    } finally {
+      setCancelando(null)
     }
   }
 
@@ -124,9 +142,19 @@ export function AtendimentosPage() {
                               Iniciar
                             </Botao>
                           )}
-                          {caps.profissional && (
+                          {caps.profissional && a.status !== 'CANCELADO' && (
                             <Botao variante="secundario" pequeno onClick={() => navegar(`/atendimentos/${a.id}`)}>
                               {a.status === 'FINALIZADO' ? 'Ver prontuário' : 'Abrir'}
+                            </Botao>
+                          )}
+                          {(a.status === 'ABERTO' || a.status === 'EM_ANDAMENTO') && (
+                            <Botao
+                              variante="perigo"
+                              pequeno
+                              carregando={cancelando === a.id}
+                              onClick={() => cancelar(a)}
+                            >
+                              Cancelar
                             </Botao>
                           )}
                         </td>

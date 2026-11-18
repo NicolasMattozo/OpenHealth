@@ -79,6 +79,7 @@ export const atendimentos = {
     http.post<Atendimento>(`${inst(cnpj)}/atendimentos`, { cpfPaciente, motivo }),
   iniciar: (cnpj: string, id: number) => http.post<Atendimento>(`${inst(cnpj)}/atendimentos/${id}/iniciar`),
   finalizar: (cnpj: string, id: number) => http.post<Atendimento>(`${inst(cnpj)}/atendimentos/${id}/finalizar`),
+  cancelar: (cnpj: string, id: number) => http.post<Atendimento>(`${inst(cnpj)}/atendimentos/${id}/cancelar`),
   prontuario: (cnpj: string, id: number) =>
     http.get<ProntuarioDetalhado>(`${inst(cnpj)}/atendimentos/${id}/prontuario`),
 }
